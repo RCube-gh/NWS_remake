@@ -20,14 +20,17 @@ def main(page:ft.Page):
     page.window.height=400
     page.window.resizable=False
 
-    content_area=ft.Column(expand=True)
+    content_area=ft.Column(width=500)
 
     word_input=ft.TextField(label="Word",autofocus=True,expand=True)
-    meaning_input=ft.TextField(label="Meaning",expand=True,multiline=True,min_lines=4,max_lines=4,)
+    meaning_input=ft.TextField(label="Meaning",expand=True,multiline=True,min_lines=8,max_lines=8,)
     tag_input=ft.TextField(label="Tags",expand=True,on_change=lambda e:update_tag_suggestions(e.value))
     tag_suggestions=ft.Column()
     selected_tags=[]
 
+    def open_drawer(e):
+        page.drawer.open=not page.drawer.open
+        page.update()
 
     def update_tag_suggestions(query):
         tag_suggestions.controls.clear()
@@ -60,19 +63,16 @@ def main(page:ft.Page):
             word_input.focus()
             page.update()
 
-
-
-
     def update_content(view_name):
         content_area.controls.clear()
         if view_name=="main":
             content_area.controls.append(
                     ft.Column([
                         ft.Row([word_input]),
-                        ft.Row([meaning_input]),
                         ft.Row([tag_input]),
+                        ft.Row([meaning_input]),
                         tag_suggestions,
-                        ft.ElevatedButton("Save",on_click=save_word)
+                        #ft.ElevatedButton("Save",on_click=save_word)
                         ])
                     )
         if view_name=="list":
@@ -83,13 +83,11 @@ def main(page:ft.Page):
             open_drawer(None)
         page.update()
 
-    def open_drawer(e):
-        page.drawer.open=not page.drawer.open
-        page.update()
 
 
     def on_keypress(e:ft.KeyboardEvent):
         if e.key=="Escape":
+            print("EXITTTTTTTTTTTTT")
             page.window.visible=False
             page.window.destroy()
         elif e.alt and e.key=="Enter":
@@ -97,7 +95,7 @@ def main(page:ft.Page):
 
     page.drawer=ft.NavigationDrawer(
             controls=[
-                ft.Text("Navigation",size=16,weight=ft.FontWeight.BOLD),
+                ft.Text("   Menu",size=16,weight=ft.FontWeight.BOLD),
                 ft.Divider(),
                 ft.ListTile(title=ft.Text("Main Page"),on_click=lambda e:update_content("main")),
                 ft.ListTile(title=ft.Text("List Page"),on_click=lambda e:update_content("list")),
@@ -105,20 +103,24 @@ def main(page:ft.Page):
                 ]
             )
 
+
     page.add(
-            ft.Column([
-                ft.Container(
-                    ft.Row([
-                        ft.IconButton(ft.icons.MENU,on_click=open_drawer),
+            ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Container(
+                            margin=ft.Margin(top=0,right=0,left=0,bottom=290),
+                            content=ft.Column([ft.IconButton(ft.Icons.MENU,on_click=open_drawer)])
+                            ),
                         content_area,
-                        ],alignment=ft.alignment.top_left),
-                    padding=10,
-                    width=550,
-                    height=50,
-                    ),
-                ])
+                    ]
+                ),
+                border_radius=10,
+                #bgcolor=ft.Colors.AMBER,
             )
-    
+        )
+
+
     update_content("main")
     update_tag_suggestions("")
     page.on_keyboard_event=on_keypress
