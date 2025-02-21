@@ -1,6 +1,7 @@
 import flet as ft
 import json
 DATA_FILE="data/words.json"
+TAGS=["science","math","english","history"]
 
 def load_words():
     try:
@@ -24,7 +25,7 @@ def main(page:ft.Page):
 
     word_input=ft.TextField(label="Word",autofocus=True,expand=True)
     meaning_input=ft.TextField(label="Meaning",expand=True,multiline=True,min_lines=8,max_lines=8,)
-    tag_input=ft.TextField(label="Tags",expand=True,on_change=lambda e:update_tag_suggestions(e.value))
+    tag_input=ft.TextField(label="Tags",expand=True,on_change=lambda e:update_tag_suggestions(tag_input.value))
     tag_suggestions=ft.Column()
     selected_tags=[]
 
@@ -45,8 +46,21 @@ def main(page:ft.Page):
     def select_tag(tag):
         if tag not in selected_tags:
             selected_tags.append(tag)
-        tag_input.value=" ".join(selected_tags)
+            selected_tags_view.controls.append(
+                    ft.Chip(label=tag,on_delete=lambda e, t=tag:remove_tag(t))
+                    )
+        tag_input.value=""
         tag_suggestions.controls.clear()
+        page.update()
+
+    def remove_tag(tag):
+        if tag in selected_tags:
+            selected_tags.remove(tag)
+            selected_tags_view.controls.clear()
+            for t in selected_tags:
+                selected_tags_view.controls.append(
+                        ft.Chip(label=t, on_delete=lambda e,t=t:remove_tag(t))
+                        )
         page.update()
 
 
@@ -88,8 +102,7 @@ def main(page:ft.Page):
     def on_keypress(e:ft.KeyboardEvent):
         if e.key=="Escape":
             print("EXITTTTTTTTTTTTT")
-            page.window.visible=False
-            page.window.destroy()
+            page.window.close()
         elif e.alt and e.key=="Enter":
             save_word(None)
 
@@ -121,9 +134,9 @@ def main(page:ft.Page):
         )
 
 
+    page.on_keyboard_event=on_keypress
     update_content("main")
     update_tag_suggestions("")
-    page.on_keyboard_event=on_keypress
 
 ft.app(target=main)
 
