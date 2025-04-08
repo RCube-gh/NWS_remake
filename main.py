@@ -1,7 +1,7 @@
 import flet as ft
 import json
 DATA_FILE="data/words.json"
-TAGS=["science","math","english","history"]
+TAGS = ["Science", "Math", "English", "History", "Biology", "Chemistry", "Physics", "Art", "Computer Science"]
 
 def load_words():
     try:
@@ -17,52 +17,109 @@ def save_words(words):
 def main(page:ft.Page):
     page.title="Words Stacker"
     page.theme_mode=ft.ThemeMode.LIGHT
-    page.window.width=600
-    page.window.height=400
+    page.window.width=800
+    page.window.height=540
     page.window.resizable=False
+    page.bgcolor=ft.colors.GREEN_100
 
-    content_area=ft.Column(width=500)
+    content_area=ft.Column(width=page.window.width-130)
+    main_title=ft.Text(
+        "Words Stacker",
+        size=40,
+        weight=ft.FontWeight.BOLD,
+        color=ft.colors.GREEN_900,
+        text_align=ft.TextAlign.CENTER,
+    )
 
-    word_input=ft.TextField(label="Word",autofocus=True,expand=True)
-    meaning_input=ft.TextField(label="Meaning",expand=True,multiline=True,min_lines=8,max_lines=8,)
-    tag_input=ft.TextField(label="Tags",expand=True,on_change=lambda e:update_tag_suggestions(tag_input.value))
-    tag_suggestions=ft.Column()
+    word_input=ft.TextField(
+        label="Word",
+        autofocus=True,
+        expand=True,
+        text_size=24,
+        text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
+        bgcolor=ft.colors.WHITE70,
+    )
+    meaning_input=ft.TextField(
+        label="Meaning",
+        expand=True,
+        multiline=True,
+        min_lines=8,
+        max_lines=8,
+        text_size=16,
+        text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
+        bgcolor=ft.colors.WHITE70,
+    )
+    tag_input=ft.TextField(
+        label="Tags",
+        expand=True,
+        on_change=lambda e:update_tag_suggestions(tag_input.value),
+        on_submit=lambda e: add_tag(tag_input.value),
+        bgcolor=ft.colors.WHITE70,
+    )
+    selected_tags_view=ft.Row(wrap=True,spacing=5)
     selected_tags=[]
+    suggestions_box = ft.Container(
+        content=ft.Column(spacing=0),
+        bgcolor=ft.colors.GREY_100,
+        border=ft.border.all(1, ft.colors.GREY_700),
+        border_radius=5,
+        padding=5,
+        visible=False,
+        width=300,
+        animate_opacity=100,
+        shadow=ft.BoxShadow(blur_radius=4, color=ft.colors.BLACK26),
+        opacity=0
+    )
 
     def open_drawer(e):
         page.drawer.open=not page.drawer.open
         page.update()
 
     def update_tag_suggestions(query):
-        tag_suggestions.controls.clear()
-        if query:
-            matching_tags=[t for t in TAGS if t.startswith(query)]
-            for tag in matching_tags:
-                tag_suggestions.controls.append(
-                        ft.TextButton(tag,on_click=lambda e,t=tag:select_tag(t))
-                        )
+        suggestions_box.content.controls.clear()
+        matched = [tag for tag in TAGS if query.lower() in tag.lower() and tag not in selected_tags]
+        if query and matched:
+            for tag in matched:
+                suggestions_box.content.controls.append(
+                    ft.Container(
+                        content=ft.TextButton(
+                            tag,
+                            on_click=lambda e, t=tag: add_tag(t),
+                            width=suggestions_box.width-10,
+                        ),
+                        padding=0,
+                        bgcolor=ft.colors.WHITE,
+                        border_radius=5,
+                    )
+                )
+            suggestions_box.visible = True
+            suggestions_box.opacity = 1
+        else:
+            suggestions_box.visible = False
+            suggestions_box.opacity = 0
         page.update()
 
-    def select_tag(tag):
-        if tag not in selected_tags:
+    def add_tag(tag):
+        tag = tag.strip()
+        if tag and tag not in selected_tags:
             selected_tags.append(tag)
             selected_tags_view.controls.append(
-                    ft.Chip(label=tag,on_delete=lambda e, t=tag:remove_tag(t))
-                    )
-        tag_input.value=""
-        tag_suggestions.controls.clear()
+                ft.Chip(label=ft.Text(tag), on_delete=lambda e, t=tag: remove_tag(t))
+            )
+        tag_input.value = ""
+        suggestions_box.visible = False
+        suggestions_box.opacity = 0
+        tag_input.focus()
         page.update()
 
     def remove_tag(tag):
-        if tag in selected_tags:
-            selected_tags.remove(tag)
-            selected_tags_view.controls.clear()
-            for t in selected_tags:
-                selected_tags_view.controls.append(
-                        ft.Chip(label=t, on_delete=lambda e,t=t:remove_tag(t))
-                        )
+        selected_tags.remove(tag)
+        selected_tags_view.controls.clear()
+        for t in selected_tags:
+            selected_tags_view.controls.append(
+                ft.Chip(label=ft.Text(t), on_delete=lambda e, t=t: remove_tag(t))
+            )
         page.update()
-
 
     def save_word(e):
         if word_input.value and meaning_input.value:
@@ -82,10 +139,11 @@ def main(page:ft.Page):
         if view_name=="main":
             content_area.controls.append(
                     ft.Column([
+                        ft.Row([main_title],alignment=ft.MainAxisAlignment.CENTER),
                         ft.Row([word_input]),
-                        ft.Row([tag_input]),
+                        selected_tags_view,
+                        ft.Column([tag_input,suggestions_box]),
                         ft.Row([meaning_input]),
-                        tag_suggestions,
                         #ft.ElevatedButton("Save",on_click=save_word)
                         ])
                     )
@@ -101,7 +159,6 @@ def main(page:ft.Page):
 
     def on_keypress(e:ft.KeyboardEvent):
         if e.key=="Escape":
-            print("EXITTTTTTTTTTTTT")
             page.window.close()
         elif e.alt and e.key=="Enter":
             save_word(None)
@@ -118,20 +175,30 @@ def main(page:ft.Page):
 
 
     page.add(
-            ft.Container(
-                content=ft.Row(
-                    [
-                        ft.Container(
-                            margin=ft.Margin(top=0,right=0,left=0,bottom=290),
-                            content=ft.Column([ft.IconButton(ft.Icons.MENU,on_click=open_drawer)])
-                            ),
-                        content_area,
-                    ]
+        ft.Row(
+            [
+                # Left Menu (fixed width)
+                ft.Container(
+                    content=ft.Column(
+                        [ft.IconButton(ft.Icons.MENU, on_click=open_drawer)],
+                        alignment=ft.MainAxisAlignment.START
+                    ),
+                    bgcolor=ft.colors.GREEN_200,
+                    width=60,  # fixed width menu
+                    padding=10
                 ),
-                border_radius=10,
-                #bgcolor=ft.Colors.AMBER,
-            )
+                
+                # Main Content Area (expand to fill)
+                ft.Container(
+                    content=content_area,
+                    expand=True,
+                    padding=10,
+                ),
+            ],
+            expand=True,
+            vertical_alignment=ft.CrossAxisAlignment.START  # aligns children vertically at the top
         )
+    )
 
 
     page.on_keyboard_event=on_keypress
@@ -139,5 +206,3 @@ def main(page:ft.Page):
     update_tag_suggestions("")
 
 ft.app(target=main)
-
-
