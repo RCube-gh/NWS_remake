@@ -31,21 +31,23 @@ def save_tags(tags):
 
 
 
+
 def main(page:ft.Page):
     page.title="Words Stacker"
     page.theme_mode=ft.ThemeMode.LIGHT
     page.window.width=800
     page.window.height=540
     page.window.resizable=True
-    page.bgcolor=ft.colors.BLUE_100
+    page.bgcolor=ft.Colors.BLUE_100
 
     TAGS=load_tags()
-    content_area=ft.Column(width=page.window.width-130,expand=True)
+    #content_area=ft.Column(width=page.window.width-130,expand=True)
+    content_area=ft.Column(expand=True)
     main_title=ft.Text(
         "Words Stacker",
         size=40,
         weight=ft.FontWeight.BOLD,
-        color=ft.colors.BLUE_900,
+        color=ft.Colors.BLUE_900,
         text_align=ft.TextAlign.CENTER,
     )
 
@@ -55,7 +57,7 @@ def main(page:ft.Page):
         expand=True,
         text_size=24,
         text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-        bgcolor=ft.colors.WHITE70,
+        bgcolor=ft.Colors.WHITE70,
     )
     meaning_input=ft.TextField(
         label="Meaning",
@@ -65,29 +67,37 @@ def main(page:ft.Page):
         max_lines=800,
         text_size=16,
         text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-        bgcolor=ft.colors.WHITE70,
+        bgcolor=ft.Colors.WHITE70,
     )
     tag_input=ft.TextField(
         label="Tags",
         expand=True,
         on_change=lambda e:update_tag_suggestions(tag_input.value),
         on_submit=lambda e: add_tag(tag_input.value),
-        bgcolor=ft.colors.WHITE70,
+        bgcolor=ft.Colors.WHITE70,
     )
     selected_tags_view=ft.Row(wrap=True,spacing=5)
     selected_tags=[]
     suggestions_box = ft.Container(
         content=ft.Column(spacing=0),
-        bgcolor=ft.colors.GREY_100,
-        border=ft.border.all(1, ft.colors.GREY_700),
+        bgcolor=ft.Colors.GREY_100,
+        border=ft.border.all(1, ft.Colors.GREY_700),
         border_radius=5,
         padding=5,
         visible=False,
         width=300,
         animate_opacity=100,
-        shadow=ft.BoxShadow(blur_radius=4, color=ft.colors.BLACK26),
+        shadow=ft.BoxShadow(blur_radius=4, color=ft.Colors.BLACK26),
         opacity=0
     )
+    table_container=None
+    def on_resize(e):
+        #print("Resizing")
+        #update_content("list")
+        if table_container:
+            table_container.height=page.window.height-200
+            page.update()
+
 
     def open_drawer(e):
         page.drawer.open=not page.drawer.open
@@ -106,7 +116,7 @@ def main(page:ft.Page):
                             width=suggestions_box.width-10,
                         ),
                         padding=0,
-                        bgcolor=ft.colors.WHITE,
+                        bgcolor=ft.Colors.WHITE,
                         border_radius=5,
                     )
                 )
@@ -167,6 +177,7 @@ def main(page:ft.Page):
             page.update()
 
     def update_content(view_name):
+        nonlocal table_container
         content_area.controls.clear()
         if view_name=="main":
             content_area.controls.append(
@@ -190,41 +201,72 @@ def main(page:ft.Page):
                 ),
             )
         elif view_name=="list":
-            if not load_words():
+            words = load_words()
+            if not words:
                 content_area.controls.append(ft.Text("No words found"))
                 if page.drawer.open:
                     open_drawer(None)
                 page.update()
                 return
-            table=ft.DataTable(
-                columns=[
-                    ft.DataColumn(label=ft.Text("Word")),
-                    ft.DataColumn(label=ft.Text("Meaning")),
-                    ft.DataColumn(label=ft.Text("Tags")),
-                    ft.DataColumn(label=ft.Text("Date")),
-                ],
-                rows=[
-                    ft.DataRow(
-                        cells=[
-                            ft.DataCell(ft.Text(w["word"], weight=ft.FontWeight.BOLD, max_lines=1, no_wrap=True,width=150)),
-                            ft.DataCell(ft.Text(w["meaning"], max_lines=3, overflow=ft.TextOverflow.ELLIPSIS, tooltip=w["meaning"],width=200)),
-                            ft.DataCell(ft.Text(", ".join(w.get("tags", [])), max_lines=2,width=150)),
-                            ft.DataCell(ft.Text(w["created_at"].split("T")[0],width=100)),
-                        ]
-                    )
-                    for w in reversed(load_words())
-                ],
-                heading_row_color=ft.colors.BLUE_500,
-                column_spacing=10,
-                divider_thickness=1,
-                bgcolor=ft.colors.BLUE_50,
+
+            # HEADER ROW
+            header_row = ft.Container(
+                content=ft.Column([
+                    ft.Row([
+                        ft.Text("Word", weight=ft.FontWeight.BOLD, expand=1),
+                        ft.Text("Meaning", weight=ft.FontWeight.BOLD, expand=2),
+                        ft.Text("Tags", weight=ft.FontWeight.BOLD, expand=1),
+                        ft.Text("Date", weight=ft.FontWeight.BOLD, width=100)
+                    ], spacing=0),
+                    ft.Divider(color=ft.Colors.BLUE_500, thickness=2),
+                ]),
+                bgcolor=ft.Colors.BLUE_50,
+                padding=0
             )
 
+            # DATA ROWS
+            data_rows = []
+            for w in reversed(words):
+                data_rows.append(
+                    ft.Row([
+                        ft.Text(w["word"], expand=1),
+                        ft.Text(
+                            w["meaning"],
+                            expand=2,
+                            max_lines=3,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                            tooltip=w["meaning"]
+                        ),
+                        ft.Text(", ".join(w.get("tags", [])), expand=1, max_lines=2),
+                        ft.Text(w["created_at"].split("T")[0], width=100),
+                    ], spacing=10)
+                )
+
+            # TABLE WRAPPER
+            table_container=ft.Container(
+                content=ft.Column(data_rows, scroll="auto", spacing=8),
+                height=page.window.height-200,
+                expand=True,
+            )
             content_area.controls.append(
-                ft.Column([
-                    ft.Text("📑 Word Table", size=28, weight=ft.FontWeight.BOLD),
-                    table
-                ])
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Row([ft.Text("📑 Word List", size=28, weight=ft.FontWeight.BOLD)],alignment=ft.MainAxisAlignment.CENTER),#add searchbar later (TODO)
+                            ft.Container(
+                                content=ft.Column([
+                                    header_row,
+                                    table_container
+                                ]),
+                                bgcolor=ft.Colors.WHITE,
+                            )
+                        ],
+                        spacing=15,
+                        expand=True
+                    ),
+                    expand=True,
+                    padding=10,
+                )
             )
         elif view_name=="config":
             content_area.controls.append(ft.Text("Config Page"))
@@ -260,7 +302,7 @@ def main(page:ft.Page):
                         [ft.IconButton(ft.Icons.MENU, on_click=open_drawer)],
                         alignment=ft.MainAxisAlignment.START
                     ),
-                    bgcolor=ft.colors.BLUE_200,
+                    bgcolor=ft.Colors.BLUE_200,
                     width=60,  # fixed width menu
                     padding=10
                 ),
@@ -282,5 +324,5 @@ def main(page:ft.Page):
     page.on_keyboard_event=on_keypress
     update_content("main")
     update_tag_suggestions("")
-
+    page.on_resized=on_resize
 ft.app(target=main)
