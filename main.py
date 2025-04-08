@@ -36,11 +36,11 @@ def main(page:ft.Page):
     page.theme_mode=ft.ThemeMode.LIGHT
     page.window.width=800
     page.window.height=540
-    page.window.resizable=False
+    page.window.resizable=True
     page.bgcolor=ft.colors.BLUE_100
 
     TAGS=load_tags()
-    content_area=ft.Column(width=page.window.width-130)
+    content_area=ft.Column(width=page.window.width-130,expand=True)
     main_title=ft.Text(
         "Words Stacker",
         size=40,
@@ -61,8 +61,8 @@ def main(page:ft.Page):
         label="Meaning",
         expand=True,
         multiline=True,
-        min_lines=8,
-        max_lines=8,
+        min_lines=800,
+        max_lines=800,
         text_size=16,
         text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
         bgcolor=ft.colors.WHITE70,
@@ -170,15 +170,25 @@ def main(page:ft.Page):
         content_area.controls.clear()
         if view_name=="main":
             content_area.controls.append(
-                    ft.Column([
-                        ft.Row([main_title],alignment=ft.MainAxisAlignment.CENTER),
-                        ft.Row([word_input]),
-                        selected_tags_view,
-                        ft.Column([tag_input,suggestions_box]),
-                        ft.Row([meaning_input]),
-                        #ft.ElevatedButton("Save",on_click=save_word)
-                        ])
-                    )
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Column([
+                                ft.Row([main_title],alignment=ft.MainAxisAlignment.CENTER),
+                                #ft.Divider(),
+                                word_input,
+                                selected_tags_view,
+                                ft.Column([tag_input,suggestions_box]),
+                            ],spacing=10),
+                            ft.Container(
+                                content=meaning_input,
+                                expand=True,
+                            ),
+                        ],
+                    #expand=True
+                    ),expand=True,
+                ),
+            )
         elif view_name=="list":
             if not load_words():
                 content_area.controls.append(ft.Text("No words found"))
@@ -260,6 +270,7 @@ def main(page:ft.Page):
                     content=content_area,
                     expand=True,
                     padding=10,
+                    margin=ft.margin.only(left=10, right=40, top=0, bottom=10),
                 ),
             ],
             expand=True,
