@@ -37,7 +37,7 @@ def main(page:ft.Page):
     page.window.width=800
     page.window.height=540
     page.window.resizable=False
-    page.bgcolor=ft.colors.GREEN_100
+    page.bgcolor=ft.colors.BLUE_100
 
     TAGS=load_tags()
     content_area=ft.Column(width=page.window.width-130)
@@ -45,7 +45,7 @@ def main(page:ft.Page):
         "Words Stacker",
         size=40,
         weight=ft.FontWeight.BOLD,
-        color=ft.colors.GREEN_900,
+        color=ft.colors.BLUE_900,
         text_align=ft.TextAlign.CENTER,
     )
 
@@ -179,9 +179,44 @@ def main(page:ft.Page):
                         #ft.ElevatedButton("Save",on_click=save_word)
                         ])
                     )
-        if view_name=="list":
-            content_area.controls.append(ft.Text("List Page"))
-        if view_name=="config":
+        elif view_name=="list":
+            if not load_words():
+                content_area.controls.append(ft.Text("No words found"))
+                if page.drawer.open:
+                    open_drawer(None)
+                page.update()
+                return
+            table=ft.DataTable(
+                columns=[
+                    ft.DataColumn(label=ft.Text("Word")),
+                    ft.DataColumn(label=ft.Text("Meaning")),
+                    ft.DataColumn(label=ft.Text("Tags")),
+                    ft.DataColumn(label=ft.Text("Date")),
+                ],
+                rows=[
+                    ft.DataRow(
+                        cells=[
+                            ft.DataCell(ft.Text(w["word"], weight=ft.FontWeight.BOLD, max_lines=1, no_wrap=True,width=150)),
+                            ft.DataCell(ft.Text(w["meaning"], max_lines=3, overflow=ft.TextOverflow.ELLIPSIS, tooltip=w["meaning"],width=200)),
+                            ft.DataCell(ft.Text(", ".join(w.get("tags", [])), max_lines=2,width=150)),
+                            ft.DataCell(ft.Text(w["created_at"].split("T")[0],width=100)),
+                        ]
+                    )
+                    for w in reversed(load_words())
+                ],
+                heading_row_color=ft.colors.BLUE_500,
+                column_spacing=10,
+                divider_thickness=1,
+                bgcolor=ft.colors.BLUE_50,
+            )
+
+            content_area.controls.append(
+                ft.Column([
+                    ft.Text("📑 Word Table", size=28, weight=ft.FontWeight.BOLD),
+                    table
+                ])
+            )
+        elif view_name=="config":
             content_area.controls.append(ft.Text("Config Page"))
         if page.drawer.open:
             open_drawer(None)
@@ -215,7 +250,7 @@ def main(page:ft.Page):
                         [ft.IconButton(ft.Icons.MENU, on_click=open_drawer)],
                         alignment=ft.MainAxisAlignment.START
                     ),
-                    bgcolor=ft.colors.GREEN_200,
+                    bgcolor=ft.colors.BLUE_200,
                     width=60,  # fixed width menu
                     padding=10
                 ),
