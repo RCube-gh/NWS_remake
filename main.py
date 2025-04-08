@@ -1,8 +1,12 @@
 import flet as ft
 import json
-DATA_FILE="data/words.json"
-TAGS = ["Science", "Math", "English", "History", "Biology", "Chemistry", "Physics", "Art", "Computer Science"]
+import os
+from datetime import datetime
 
+
+os.makedirs("data",exist_ok=True)
+DATA_FILE="data/words.json"
+TAGS_FILE="data/tags.json"
 def load_words():
     try:
         with open(DATA_FILE,"r",encoding="utf-8") as file:
@@ -14,6 +18,19 @@ def save_words(words):
     with open(DATA_FILE,"w",encoding="utf-8") as file:
         json.dump(words,file,indent=4,ensure_ascii=False)
 
+def load_tags():
+    try:
+        with open(TAGS_FILE,"r",encoding="utf-8") as file:
+            return json.load(file)
+    except (FileNotFoundError,json.JSONDecodeError):
+        return []
+
+def save_tags(tags):
+    with open(TAGS_FILE,"w",encoding="utf-8") as file:
+        json.dump(tags,file,indent=4,ensure_ascii=False)
+
+
+
 def main(page:ft.Page):
     page.title="Words Stacker"
     page.theme_mode=ft.ThemeMode.LIGHT
@@ -22,6 +39,7 @@ def main(page:ft.Page):
     page.window.resizable=False
     page.bgcolor=ft.colors.GREEN_100
 
+    TAGS=load_tags()
     content_area=ft.Column(width=page.window.width-130)
     main_title=ft.Text(
         "Words Stacker",
@@ -123,14 +141,28 @@ def main(page:ft.Page):
 
     def save_word(e):
         if word_input.value and meaning_input.value:
-            new_entry={"word": word_input.value,"meaning":meaning_input.value,"tags":selected_tags}
+            new_entry={
+                "word": word_input.value,
+                "meaning":meaning_input.value,
+                "tags":selected_tags,
+                "created_at":datetime.now().isoformat()
+            }
             words=load_words()
             words.append(new_entry)
             save_words(words)
+            #save new tags to file
+            existing_tags=load_tags()
+            for tag in selected_tags:
+                if tag not in existing_tags:
+                    existing_tags.append(tag)
+            save_tags(existing_tags)
+            TAGS[:] = existing_tags
+
             word_input.value=""
             meaning_input.value=""
             tag_input.value=""
             selected_tags.clear()
+            selected_tags_view.controls.clear()
             word_input.focus()
             page.update()
 
