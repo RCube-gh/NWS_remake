@@ -101,6 +101,7 @@ def main(page:ft.Page):
         on_change=lambda e: handle_search()
     )
 
+
     table_container=None
 
     def on_resize(e):
@@ -115,6 +116,135 @@ def main(page:ft.Page):
         page.drawer.open=not page.drawer.open
         page.update()
     
+
+
+    def word_detail_modal(word_obj):
+        word_field=ft.TextField(
+            value=word_obj["word"],
+            label="Word",
+            read_only=True,
+            bgcolor=ft.Colors.WHITE70,
+            text_size=24,
+        )
+        meaning_field=ft.TextField(
+            value=word_obj["meaning"],
+            label="Meaning",
+            multiline=True,
+            read_only=True,
+            bgcolor=ft.Colors.WHITE70,
+        )
+        tag_field=ft.TextField(
+            value=", ".join(word_obj.get("tags", [])),
+            label="Tags",
+            read_only=True,
+            bgcolor=ft.Colors.WHITE70,
+        )
+        edit_mode=ft.Ref[bool]()
+        edit_mode.current=False
+        edit_label=ft.Ref[ft.Text]()
+        def toggle_edit(e):
+            edit_mode.current=not edit_mode.current
+            word_field.read_only=not edit_mode.current
+            meaning_field.read_only=not edit_mode.current
+            tag_field.read_only=not edit_mode.current
+            if edit_label.current:
+                edit_label.current.visible=edit_mode.current
+            page.update()
+        def save_word_update(updated_entry):
+            words=load_words()
+            for i,w in enumerate(words):
+                if w["created_at"]==updated_entry["created_at"]:
+                    words[i]=updated_entry
+                    break
+            save_words(words)
+            handle_search()
+
+
+        def save_changes(e):
+            updated_word=word_field.value.strip()
+            updated_meaning=meaning_field.value.strip()
+            updated_tags=[t.strip() for t in tag_field.value.split(",") if t.strip()]
+            word_obj["word"]=updated_word  
+            word_obj["meaning"]=updated_meaning
+            word_obj["tags"]=updated_tags
+            save_word_update(word_obj)
+            
+            page.snack_bar=ft.SnackBar(
+                content=ft.Text("✅ Word updated successfully!",size=20,color=ft.Colors.GREEN_900),
+                #duration=ft.Duration(seconds=0.5),
+                duration=2000,
+                bgcolor=ft.Colors.GREEN_50,
+            )
+            page.open(page.snack_bar)
+            page.update()
+            page.close(modal)
+
+
+
+        def confirm_delete(e):
+            def close_delete_confirm_modal(e):
+                page.close(delete_confirm_modal)
+                page.update()
+            def delete_word(entry):
+                words=load_words()
+                words=[w for w in words if w["created_at"]!=entry["created_at"]]
+                save_words(words)
+                handle_search() #refresh the list view
+                page.snack_bar=ft.SnackBar(
+                    content=ft.Text("✅ Word deleted successfully!",size=20,color=ft.Colors.GREEN_900),
+                    duration=2000,
+                    bgcolor=ft.Colors.GREEN_50,
+                )
+                page.open(page.snack_bar)
+                page.update()
+                page.close(delete_confirm_modal)
+            delete_confirm_modal=ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Delete this word??"),
+                content=ft.Text("Are you sure you want to delete this entry?"),
+                actions=[
+                    ft.TextButton("Cancel",on_click=lambda e:close_delete_confirm_modal(e)),
+                    ft.TextButton("Delete",on_click=lambda e:delete_word(word_obj)),
+                ]
+            )
+            page.dialog=delete_confirm_modal
+            page.open(delete_confirm_modal)
+        modal=ft.AlertDialog(
+            title=ft.Row([
+                ft.Text("Word Details",size=32,weight=ft.FontWeight.BOLD),
+                ft.Text("(editing)",ref=edit_label,color=ft.Colors.BLACK54,visible=False,size=20),
+            ]),
+            content=ft.Container(
+                    content=ft.Column([
+                        word_field,
+                        meaning_field,
+                        tag_field,
+                        ft.Container(
+                            content=ft.Text(f"Date Added: {word_obj[('created_at')].split('T')[0]}",italic=True,size=12,color=ft.Colors.GREY_900),
+                            alignment=ft.alignment.center_right,
+                        )
+                    ],spacing=10),
+                    width=page.window.width-300,
+                    padding=20,
+                    border_radius=10,
+                    animate_opacity=100,
+            ),
+            actions=[
+                #ft.TextButton("Save",on_click=save_changes,disabled=not edit_mode.current),
+                ft.TextButton("Edit",on_click=toggle_edit),
+                ft.TextButton("Delete",on_click=confirm_delete),
+                ft.TextButton("Save",on_click=save_changes),
+                ft.TextButton("Close",on_click=lambda e:page.close(modal)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            content_padding=10,
+            bgcolor=ft.Colors.BLUE_50,
+            shape=ft.RoundedRectangleBorder(radius=30),
+        )
+        page.dialog=modal
+        page.open(modal)
+    
+    
     def update_list_view(words):
         nonlocal table_container
         data_rows=[]
@@ -124,25 +254,33 @@ def main(page:ft.Page):
             page.update()
             return
         for w in reversed(words):
+            row=ft.Row([
+                ft.Text(w["word"], expand=1),
+                ft.Text(
+                    w["meaning"],
+                    expand=2,
+                    max_lines=3,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    tooltip=w["meaning"]
+                ),
+                ft.Text(", ".join(w.get("tags", [])), expand=1, max_lines=2),
+                ft.Text(w["created_at"].split("T")[0], width=100),
+            ], spacing=10)
             data_rows.append(
-                ft.Row([
-                    ft.Text(w["word"], expand=1),
-                    ft.Text(
-                        w["meaning"],
-                        expand=2,
-                        max_lines=3,
-                        overflow=ft.TextOverflow.ELLIPSIS,
-                        tooltip=w["meaning"]
-                    ),
-                    ft.Text(", ".join(w.get("tags", [])), expand=1, max_lines=2),
-                    ft.Text(w["created_at"].split("T")[0], width=100),
-                ], spacing=10)
+                ft.Container(
+                    content=row,
+                    on_click=lambda e,word=w: word_detail_modal(word),
+                    on_long_press=lambda e,word=w: word_detail_modal(word),
+                    padding=10,
+                    ink=True,
+                    border_radius=5,
+                    bgcolor=ft.Colors.TRANSPARENT,
+                )
             )
+
         if table_container:
             table_container.content.controls=data_rows
             page.update()
-
-
 
     def parse_search_query(query):
         import re
