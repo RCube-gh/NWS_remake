@@ -90,19 +90,119 @@ def main(page:ft.Page):
         shadow=ft.BoxShadow(blur_radius=4, color=ft.Colors.BLACK26),
         opacity=0
     )
+
+    search_input=ft.TextField(
+        label="Search",
+        hint_text="Search for words or meanings",
+        #expand=True,
+        width=350,
+        text_size=16,
+        bgcolor=ft.Colors.WHITE70,
+        on_change=lambda e: handle_search()
+    )
+
     table_container=None
+
     def on_resize(e):
         #print("Resizing")
         #update_content("list")
         if table_container:
-            table_container.height=page.window.height-200
+            table_container.height=page.window.height-210
             page.update()
 
 
     def open_drawer(e):
         page.drawer.open=not page.drawer.open
         page.update()
+    
+    def update_list_view(words):
+        nonlocal table_container
+        data_rows=[]
+        if not words:
+            table_container.content.controls.clear()
+            table_container.content.controls.append(ft.Text("No words found",italic=True,color=ft.Colors.GREY_500))
+            page.update()
+            return
+        for w in reversed(words):
+            data_rows.append(
+                ft.Row([
+                    ft.Text(w["word"], expand=1),
+                    ft.Text(
+                        w["meaning"],
+                        expand=2,
+                        max_lines=3,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                        tooltip=w["meaning"]
+                    ),
+                    ft.Text(", ".join(w.get("tags", [])), expand=1, max_lines=2),
+                    ft.Text(w["created_at"].split("T")[0], width=100),
+                ], spacing=10)
+            )
+        if table_container:
+            table_container.content.controls=data_rows
+            page.update()
 
+
+
+    def parse_search_query(query):
+        import re
+        include_tag_pattern=r"(?<!-)\#(\w+)"
+        exclude_tag_pattern=r"-\#(\w+)"
+        phrase_pattern=r'"([^"]+)"'
+        include_tags=re.findall(include_tag_pattern,query)
+        exclude_tags=re.findall(exclude_tag_pattern,query)
+        phrases=re.findall(phrase_pattern,query)
+        clean_query=re.sub(include_tag_pattern,"",query)
+        clean_query=re.sub(exclude_tag_pattern,"",clean_query)
+        clean_query=re.sub(phrase_pattern,"",clean_query)
+        keywords=clean_query.strip().split()
+        return{
+            "include_tags":include_tags,
+            "exclude_tags":exclude_tags,
+            "phrases":phrases,
+            "keywords":keywords
+        }
+
+
+
+    def handle_search():
+        nonlocal table_container
+        q=parse_search_query(search_input.value.lower())
+        include_tags=q["include_tags"]
+        exclude_tags=q["exclude_tags"]
+        phrases=q["phrases"]
+        keywords=q["keywords"]
+
+        filtered=[]
+
+        print("======================")
+        print("Searching for:")
+        print("Include Tags:",include_tags)
+        print("Exclude Tags:",exclude_tags)
+        print("Phrases:",phrases)
+        print("Keywords:",keywords)
+
+        query_exists=bool(keywords or phrases or include_tags or exclude_tags)
+
+
+
+        for w in load_words():
+            word_tags=[t.lower() for t in w.get("tags",[])]
+            text=(w["word"]+" "+w["meaning"]).lower()
+            text_match=(
+                any(k in text for k in keywords) or
+                any(p in text for p in phrases)
+            )
+            include_match=all(tag in word_tags for tag in include_tags)
+            exclude_match=all(tag not in word_tags for tag in exclude_tags)
+            if not query_exists:
+                filtered.append(w)
+            elif (text_match and include_match and exclude_match) or (not keywords and not phrases and include_match and exclude_match):
+                filtered.append(w)
+            
+
+        update_list_view(filtered)
+        
     def update_tag_suggestions(query):
         suggestions_box.content.controls.clear()
         matched = [tag for tag in TAGS if query.lower() in tag.lower() and tag not in selected_tags]
@@ -150,7 +250,7 @@ def main(page:ft.Page):
         page.update()
 
     def save_word(e):
-        if word_input.value and meaning_input.value:
+        if word_input.value:
             new_entry={
                 "word": word_input.value,
                 "meaning":meaning_input.value,
@@ -175,6 +275,9 @@ def main(page:ft.Page):
             selected_tags_view.controls.clear()
             word_input.focus()
             page.update()
+
+
+
 
     def update_content(view_name):
         nonlocal table_container
@@ -202,12 +305,6 @@ def main(page:ft.Page):
             )
         elif view_name=="list":
             words = load_words()
-            if not words:
-                content_area.controls.append(ft.Text("No words found"))
-                if page.drawer.open:
-                    open_drawer(None)
-                page.update()
-                return
 
             # HEADER ROW
             header_row = ft.Container(
@@ -225,34 +322,35 @@ def main(page:ft.Page):
             )
 
             # DATA ROWS
-            data_rows = []
-            for w in reversed(words):
-                data_rows.append(
-                    ft.Row([
-                        ft.Text(w["word"], expand=1),
-                        ft.Text(
-                            w["meaning"],
-                            expand=2,
-                            max_lines=3,
-                            overflow=ft.TextOverflow.ELLIPSIS,
-                            tooltip=w["meaning"]
-                        ),
-                        ft.Text(", ".join(w.get("tags", [])), expand=1, max_lines=2),
-                        ft.Text(w["created_at"].split("T")[0], width=100),
-                    ], spacing=10)
-                )
-
             # TABLE WRAPPER
-            table_container=ft.Container(
-                content=ft.Column(data_rows, scroll="auto", spacing=8),
-                height=page.window.height-200,
-                expand=True,
+            table_container = ft.Container(
+                content=ft.Column([], scroll="auto", spacing=8),
+                height=page.window.height - 200,
+                expand=True
             )
+
+
             content_area.controls.append(
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Row([ft.Text("📑 Word List", size=28, weight=ft.FontWeight.BOLD)],alignment=ft.MainAxisAlignment.CENTER),#add searchbar later (TODO)
+                            ft.Row(
+                                [
+                                    ft.Text("📑 Word List", size=28, weight=ft.FontWeight.BOLD),
+                                    ft.Container(
+                                        content=ft.Row(
+                                            [search_input],
+                                            spacing=10,
+                                            alignment=ft.MainAxisAlignment.END
+                                        ),
+                                        expand=True,
+                                        #alignment=ft.alignment.center_right
+                                    )
+                                ],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER
+                            ),
+
                             ft.Container(
                                 content=ft.Column([
                                     header_row,
@@ -261,13 +359,14 @@ def main(page:ft.Page):
                                 bgcolor=ft.Colors.WHITE,
                             )
                         ],
-                        spacing=15,
-                        expand=True
-                    ),
-                    expand=True,
+                            spacing=15,
+                            expand=True
+                        ),
+                        expand=True,
                     padding=10,
                 )
             )
+            update_list_view(words)
         elif view_name=="config":
             content_area.controls.append(ft.Text("Config Page"))
         if page.drawer.open:
