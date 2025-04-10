@@ -3,10 +3,25 @@ import json
 import os
 from datetime import datetime
 
+CONFIG_FILE="config.json"
 
-os.makedirs("data",exist_ok=True)
-DATA_FILE="data/words.json"
-TAGS_FILE="data/tags.json"
+def load_config():
+    try:
+        with open(CONFIG_FILE,"r",encoding="utf-8") as file:
+            return json.load(file)
+    except (FileNotFoundError,json.JSONDecodeError):
+        return {"data_dir":"nws_data"}
+
+def save_config(config):
+    with open(CONFIG_FILE,"w",encoding="utf-8") as file:
+        json.dump(config,file,indent=4,ensure_ascii=False)  
+
+config=load_config()
+data_dir=os.path.join(config.get("data_dir","nws_data"),"data")
+os.makedirs(data_dir,exist_ok=True)
+DATA_FILE=os.path.join(data_dir,"words.json")
+TAGS_FILE=os.path.join(data_dir,"tags.json")
+
 def load_words():
     try:
         with open(DATA_FILE,"r",encoding="utf-8") as file:
@@ -539,7 +554,38 @@ def main(page:ft.Page):
             )
             update_list_view(words)
         elif view_name=="config":
-            content_area.controls.append(ft.Text("Config Page"))
+            config_data=load_config()
+            def save_data_dir(new_dir):
+                config_data["data_dir"]=new_dir
+                save_config(config_data)
+                page.snack_bar=ft.SnackBar(
+                    content=ft.Text("✅ Directory updated. Please restart the app to apply changes.",size=20,color=ft.Colors.GREEN_900),
+                    duration=2000,
+                    bgcolor=ft.Colors.GREEN_50,
+                )
+                page.open(page.snack_bar)
+                page.update()
+            data_dir_input=ft.TextField(
+                label="Data Directory",
+                value=config_data.get("data_dir","data"),
+                on_submit=lambda e:save_config({"data_dir":data_dir_input.value}),
+            )
+            data_dir_save_button=ft.ElevatedButton(
+                "Save",
+                on_click=lambda e:save_data_dir(data_dir_input.value),
+            )
+            content_area.controls.append(
+                ft.Container(
+                    content=ft.Column([
+                        ft.Text("Settings",size=28,weight=ft.FontWeight.BOLD),
+                        ft.Row([
+                            data_dir_input,
+                            data_dir_save_button
+                        ],alignment=ft.MainAxisAlignment.END,vertical_alignment=ft.CrossAxisAlignment.CENTER,spacing=10),
+                    ],spacing=10),
+                    expand=True,
+                )
+            )
         if page.drawer.open:
             open_drawer(None)
         page.update()
