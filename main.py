@@ -215,17 +215,24 @@ def main(page:ft.Page):
                 ft.Text("(editing)",ref=edit_label,color=ft.Colors.BLACK54,visible=False,size=20),
             ]),
             content=ft.Container(
-                    content=ft.Column([
-                        word_field,
-                        meaning_field,
-                        tag_field,
-                        ft.Container(
-                            content=ft.Text(f"Date Added: {word_obj[('created_at')].split('T')[0]}",italic=True,size=12,color=ft.Colors.GREY_900),
-                            alignment=ft.alignment.center_right,
-                        )
-                    ],spacing=10),
+                    content=ft.Container(
+                        content=ft.Column([
+                            ft.Container(content=word_field,margin=ft.margin.only(top=10)),
+                            meaning_field,
+                            tag_field,
+                            ft.Container(
+                                content=ft.Text(f"Date Added: {word_obj[('created_at')].split('T')[0]}",italic=True,size=12,color=ft.Colors.GREY_900),
+                                alignment=ft.alignment.center_right,
+                            ),
+                        ],
+                            spacing=10,
+                            scroll="auto",
+                        ),
+                        #padding=10,
+                    ),
                     width=page.window.width-300,
-                    padding=20,
+                    padding=10,
+                    margin=ft.margin.only(top=10,bottom=10,left=10,right=10),
                     border_radius=10,
                     animate_opacity=100,
             ),
@@ -253,6 +260,22 @@ def main(page:ft.Page):
             table_container.content.controls.append(ft.Text("No words found",italic=True,color=ft.Colors.GREY_500))
             page.update()
             return
+
+        table_container.content.controls.clear()
+        table_container.content.controls.append(
+            ft.Container(
+                content=ft.ProgressRing(
+                    color=ft.Colors.BLUE_500,
+                ),
+                alignment=ft.alignment.center,
+                padding=ft.padding.only(top=20),
+                expand=True,
+            )
+        )
+        page.update()
+
+
+
         for w in reversed(words):
             row=ft.Row([
                 ft.Text(w["word"], expand=1),
@@ -326,7 +349,8 @@ def main(page:ft.Page):
 
         for w in load_words():
             word_tags=[t.lower() for t in w.get("tags",[])]
-            text=(w["word"]+" "+w["meaning"]).lower()
+            #text=(w["word"]+" "+w["meaning"]).lower()
+            text=((w.get("word")or"") + " " + (w.get("meaning")or"")).lower()
             text_match=(
                 any(k in text for k in keywords) or
                 any(p in text for p in phrases)
