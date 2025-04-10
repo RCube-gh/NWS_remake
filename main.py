@@ -411,6 +411,15 @@ def main(page:ft.Page):
             tag_input.value=""
             selected_tags.clear()
             selected_tags_view.controls.clear()
+
+            page.snack_bar=ft.SnackBar(
+                content=ft.Text("✅ Word saved successfully!",size=20,color=ft.Colors.GREEN_900),
+                duration=2000,
+                bgcolor=ft.Colors.GREEN_50,
+            )
+            page.open(page.snack_bar)
+            page.update()
+
             word_input.focus()
             page.update()
 
