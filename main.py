@@ -10,14 +10,14 @@ def load_config():
         with open(CONFIG_FILE,"r",encoding="utf-8") as file:
             return json.load(file)
     except (FileNotFoundError,json.JSONDecodeError):
-        return {"data_dir":"nws_data"}
+        return {"data_dir":""}
 
 def save_config(config):
     with open(CONFIG_FILE,"w",encoding="utf-8") as file:
         json.dump(config,file,indent=4,ensure_ascii=False)  
 
 config=load_config()
-data_dir=os.path.join(config.get("data_dir","nws_data"),"data")
+data_dir=os.path.join(config.get("data_dir",""),"nws_data")
 os.makedirs(data_dir,exist_ok=True)
 DATA_FILE=os.path.join(data_dir,"words.json")
 TAGS_FILE=os.path.join(data_dir,"tags.json")
